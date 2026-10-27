@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import ReactMarkdown from "react-markdown"; // ← NEW: renders **bold**, bullet points, etc.
 import "./App.css";
 
 function App() {
@@ -73,19 +74,19 @@ function App() {
           accept="application/pdf"
           onChange={(e) => setFile(e.target.files[0])}
         />
-
-        <button onClick={handleUpload}>
-          Upload PDF
-        </button>
+        <button onClick={handleUpload}>Upload PDF</button>
       </div>
-      
+
       {loading && <p>Loading...</p>}
+
       {summary && (
         <div className="card">
           <h2>Summary</h2>
-          <p>{summary}</p>
+          {/* ReactMarkdown renders **bold**, bullet points, <br> etc. properly */}
+          <ReactMarkdown>{summary}</ReactMarkdown>
         </div>
       )}
+
       <div className="card">
         <h2>Ask a Question</h2>
         <input
@@ -94,14 +95,14 @@ function App() {
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="Enter your question here"
         />
-        <button onClick={askQuestion}>
-          Ask
-        </button>
+        <button onClick={askQuestion}>Ask</button>
       </div>
+
       {answer && (
         <div className="card">
           <h2>Answer</h2>
-          <p>{answer}</p>
+          {/* ReactMarkdown renders **bold**, bullet points, <br> etc. properly */}
+          <ReactMarkdown>{answer}</ReactMarkdown>
         </div>
       )}
     </div>
