@@ -1,52 +1,85 @@
 # Legal AI Assistant
 
-An AI-powered web application that allows users to upload legal PDF documents, generate concise summaries, and ask questions about the uploaded document using an AI model.
+An AI-powered web application that allows users to upload legal PDF documents, generate concise summaries, and ask natural language questions about the document using a **RAG (Retrieval-Augmented Generation)** pipeline.
 
 ---
 
-# Features
+## Features
 
 * Upload legal PDF documents
-* Extract text from uploaded PDFs
-* Generate AI-based summaries
-* Ask questions about uploaded documents
+* Extract text from all pages of the PDF
+* Generate AI-based plain-English summaries
+* Ask questions — answered from the **entire document** using semantic search, not just the first few pages
+* Markdown-rendered responses (bold, bullet points formatted correctly)
 * Minimal and responsive React frontend
 * FastAPI backend with REST API architecture
-* OpenRouter AI integration
+* OpenRouter AI integration (free tier, no credit card required)
 
 ---
 
-# Tech Stack
+## Tech Stack
 
-## Frontend
-
+### Frontend
 * React.js
 * Axios
+* react-markdown
 * CSS
 
-## Backend
-
-* FastAPI
-* Python
-* REST API
-* PyPDF2
-* OpenRouter API
+### Backend
+* FastAPI (Python)
+* PyPDF2 — PDF text extraction
+* sentence-transformers (`all-MiniLM-L6-v2`) — local embedding model, runs on CPU, no API cost
+* FAISS (`faiss-cpu`) — vector similarity search
+* NumPy — vector format conversion
+* OpenRouter API — free LLM gateway
+* python-dotenv — secure API key management
 
 ---
 
-# Project Structure
+## How It Works (RAG Pipeline)
 
-```text
+```
+User uploads PDF
+      ↓
+Extract all text (PyPDF2)
+      ↓
+Split text into 500-char chunks with 50-char overlap
+      ↓
+Convert each chunk to a 384-dimension vector (sentence-transformers)
+      ↓
+Store all vectors in FAISS index (in-memory vector search)
+      ↓
+Return AI summary to user (first 4000 chars → OpenRouter LLM)
+
+User asks a question
+      ↓
+Convert question to vector (same embedding model)
+      ↓
+FAISS finds top-5 most semantically similar chunks
+      ↓
+Top-5 chunks + question → OpenRouter LLM
+      ↓
+Return grounded answer to user
+```
+
+The RAG approach means answers are drawn from the **entire document**, not just the beginning — and the LLM only sees relevant sections, making responses more accurate and focused.
+
+---
+
+## Project Structure
+
+```
 legal-ai-project/
 │
 ├── backend/
-│   ├── main.py
+│   ├── main.py              # FastAPI app with RAG pipeline
 │   ├── requirements.txt
 │   ├── .gitignore
-│   └── .env
+│   └── .env                 # API key (not committed to GitHub)
 │
 ├── frontend/
 │   ├── src/
+│   │   └── App.js           # React UI with markdown rendering
 │   ├── public/
 │   ├── package.json
 │   └── ...
@@ -56,166 +89,134 @@ legal-ai-project/
 
 ---
 
-# How It Works
+## Installation & Setup
 
-1. User uploads a legal PDF document.
-2. Backend extracts text using PyPDF2.
-3. Extracted text is sent to OpenRouter AI.
-4. AI generates a summary.
-5. User can ask questions related to the uploaded document.
-6. AI answers using document context.
-
----
-
-# Installation & Setup
-
-## 1. Clone Repository
+### 1. Clone Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/legal_doc_summarizer.git
+git clone https://github.com/adeeba-here/legal_doc_summarizer.git
+cd legal_doc_summarizer
 ```
 
 ---
 
-# Backend Setup
+### Backend Setup
 
-## 1. Navigate to backend
-
+#### Navigate to backend
 ```bash
 cd backend
 ```
 
-## 2. Create virtual environment
-
+#### Create and activate virtual environment
 ```bash
 python -m venv venv
-```
 
-## 3. Activate virtual environment
-
-### Windows
-
-```bash
+# Windows
 venv\Scripts\activate
 ```
 
----
-
-## 4. Install dependencies
-
+#### Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
----
+> **Note:** First run will download the sentence-transformer model (~90MB). This is a one-time download — it is cached locally after that.
 
-## 5. Create .env file
-
-Create a `.env` file inside the backend folder.
-
+#### Create `.env` file
+Create a `.env` file inside the `backend/` folder:
 ```env
 OPENROUTER_API_KEY=your_api_key_here
 ```
+Get a free API key at [openrouter.ai](https://openrouter.ai) — no credit card required.
 
----
-
-## 6. Run backend server
-
+#### Run backend server
 ```bash
 uvicorn main:app --reload
 ```
-
-Backend runs on:
-
-```text
-http://127.0.0.1:8000
-```
+Backend runs at: `http://127.0.0.1:8000`
+API docs available at: `http://127.0.0.1:8000/docs`
 
 ---
 
-# Frontend Setup
+### Frontend Setup
 
-## 1. Navigate to frontend
-
+#### Navigate to frontend
 ```bash
 cd frontend
 ```
 
-## 2. Install dependencies
-
+#### Install dependencies
 ```bash
 npm install
 ```
 
----
-
-## 3. Start frontend
-
+#### Start frontend
 ```bash
 npm start
 ```
+Frontend runs at: `http://localhost:3000`
 
-Frontend runs on:
+---
 
-```text
-http://localhost:3000
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | Health check |
+| POST | `/upload` | Upload PDF → returns summary + chunks_created |
+| POST | `/ask?question=...` | Ask a question → returns grounded answer |
+
+### Example Response — `/upload`
+```json
+{
+  "summary": "This agreement is between Alpha Corporate Solutions...",
+  "chunks_created": 47
+}
+```
+
+### Example Response — `/ask`
+```json
+{
+  "answer": "According to Section 7, either party may terminate with 30 days written notice..."
+}
 ```
 
 ---
 
-# API Endpoints
-
-## Upload PDF
-
-```http
-POST /upload
-```
-
-Uploads a PDF and generates a summary.
-
----
-
-## Ask Questions
-
-```http
-POST /ask
-```
-
-Allows users to ask questions related to the uploaded document.
-
----
-
-# Sample Questions
+## Sample Questions to Try
 
 * What is the agreement duration?
 * What is the penalty clause?
 * Who governs the agreement?
 * What are the payment terms?
-
-
+* What happens if payment is late?
+* Under what conditions can the contract be terminated immediately?
 
 ---
 
-# Future Improvements
+## Future Improvements
 
-* Multiple PDF support
+* Persistent FAISS index (survive server restarts)
+* Multiple document support with session management
 * User authentication
-* Database integration
 * Chat history
 * Dark mode UI
-* Better AI models
-* Document storage
+* Map-reduce summarization for very long documents
+* OCR support for scanned PDFs
 
 ---
 
-# Notes
+## Notes
 
-* Internet connection is required for AI responses.
-* Backend server must be running while using frontend.
-* OpenRouter API key is required inside `.env`.
+* Internet connection is required for LLM responses (OpenRouter API).
+* The embedding model runs **locally** — no internet needed for that part.
+* Backend server must be running while using the frontend.
+* Only digitally-created PDFs are supported (not scanned image PDFs).
+* `.env` file is excluded from GitHub via `.gitignore` — never commit your API key.
 
 ---
 
-# Author
+## Author
 
-Developed as an AI-powered legal document summarization and Q&A project using React, FastAPI, and OpenRouter AI.
+Developed as a Python Backend Developer Intern project at Rooman Technologies.
+Built with React, FastAPI, FAISS, sentence-transformers, and OpenRouter AI.
